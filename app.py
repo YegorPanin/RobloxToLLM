@@ -28,6 +28,7 @@ def handle_post_request():
         char_name = data.get('charName')
         player_name = data.get('playerName')
         question = data.get('question')
+        print(data)
 
         if not all([char_name, player_name, question]):
             return jsonify({'error': 'Недостаточно данных в запросе. Ожидаются charName, playerName, question'}), 400
@@ -66,7 +67,7 @@ def process_data(char_name, player_name, question):
 
 def get_character_description(conn, character_name):
     cursor = conn.cursor()
-    cursor.execute("SELECT character_description FROM Characters WHERE character_name = ?", (character_name,))
+    cursor.execute("SELECT character_description FROM Characters WHERE character_name = ?", (character_name))
     result = cursor.fetchone()
     if result:
         return result['character_description']
