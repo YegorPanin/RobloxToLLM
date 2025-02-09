@@ -21,7 +21,7 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-@app.route('/api/endpoint', methods=['POST'])
+@app.route('/api', methods=['POST'])
 def handle_post_request():
     if request.method == 'POST':
         data = request.get_json()
