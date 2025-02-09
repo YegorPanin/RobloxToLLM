@@ -181,4 +181,4 @@ if __name__ == '__main__':
         print("Таблицы Characters, Users и Messages уже существуют.")
 
     conn.close()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=False)
