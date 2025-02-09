@@ -5,7 +5,7 @@ import os # Импортируем библиотеку os для доступа
 
 app = Flask(__name__)
 
-DATABASE_NAME = 'Characters.db'
+DATABASE_NAME = 'characters.db'
 GROQ_API_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions' # Endpoint Groq API для Chat Completions
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY") # Получаем API-ключ из переменной окружения. **ВАЖНО: Настройте переменную окружения!**
 GROQ_MODEL_NAME = "llama3-8b-8192" # Или другая поддерживаемая модель Groq, например "mixtral-8x7b-32768"
