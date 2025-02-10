@@ -164,6 +164,9 @@ def send_prompt_to_llm_api(prompt):
         ]
     }
 
+    print(f"DEBUG: {datetime.datetime.now()} -  send_prompt_to_llm_api: GIGACHAT_API_KEY value: '{GIGACHAT_API_KEY}'") # **DEBUG: Print API Key**
+    print(f"DEBUG: {datetime.datetime.now()} -  send_prompt_to_llm_api: Headers: {headers}") # **DEBUG: Print Headers**
+
     try:
         response = requests.request("POST", url, headers=headers, json=payload, verify=False) # **verify=False - Отключение проверки SSL!**
         response.raise_for_status()  # Проверка на HTTP ошибки
