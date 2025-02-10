@@ -4,6 +4,7 @@ import os
 import datetime
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_gigachat.chat_models import GigaChat
+import json
 
 app = Flask(__name__)
 
