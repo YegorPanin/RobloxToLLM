@@ -2,26 +2,24 @@ from flask import Flask, request, jsonify
 import sqlite3
 import os
 import datetime
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_gigachat.chat_models import GigaChat
+from openai import OpenAI
 import json
 
 app = Flask(__name__)
 
 DATABASE_NAME = 'Characters.db'
-GIGACHAT_AUTHORIZATION_KEY = os.environ.get("GIGACHAT_AUTHORIZATION_KEY")
-GIGACHAT_MODEL_NAME = "GigaChat:latest"
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+OPENROUTER_MODEL_NAME = "google/gemini-2.0-flash-lite-preview-02-05:free" # Выберите или дайте пользователю выбрать модель
 
-# Инициализация модели GigaChat через Langchain
-llm = GigaChat(
-    credentials=GIGACHAT_AUTHORIZATION_KEY, # Используем Authorization Key из переменных окружения
-    verify_ssl_certs=False, # verify_ssl_certs=False - для отладки, в production лучше убрать или True
-    model=GIGACHAT_MODEL_NAME # Указываем модель
+# Инициализация клиента OpenAI для OpenRouter
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
 )
 
-if not GIGACHAT_AUTHORIZATION_KEY:
-    print("Внимание: Не найден GIGACHAT_AUTHORIZATION_KEY в переменных окружения.")
-    print("Пожалуйста, установите переменную окружения GIGACHAT_AUTHORIZATION_KEY, чтобы использовать GigaChat API.")
+if not OPENROUTER_API_KEY:
+    print("Внимание: Не найден OPENROUTER_API_KEY в переменных окружения.")
+    print("Пожалуйста, установите переменную окружения OPENROUTER_API_KEY, чтобы использовать OpenRouter API.")
 
 
 def get_db_connection():
@@ -54,7 +52,7 @@ def handle_post_request():
             # **Явно кодируем и декодируем в UTF-8 перед jsonify**
             result_utf8_bytes = result.encode('utf-8')
             result_utf8_string = result_utf8_bytes.decode('utf-8')
-            
+
             response_json = json.dumps({'response': result_utf8_string}, ensure_ascii=False).encode('utf-8')
             response = app.response_class(
                 response=response_json,
@@ -156,25 +154,32 @@ def send_prompt_to_llm_api(prompt):
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию send_prompt_to_llm_api, prompt (начало): {prompt[:50]}...")
 
     try:
-        messages = [ # Формируем список сообщений Langchain
-            SystemMessage(content="Ты - игровой персонаж."), # Системное сообщение (можно убрать, если не нужно)
-            HumanMessage(content=prompt) # Сообщение пользователя с промптом
-        ]
-        response = llm.invoke(messages) # Вызов Langchain LLM
-        llm_response_text_bytes = response.content.encode('utf-8') # Сначала кодируем в байты (на всякий случай)
-        llm_response_text = llm_response_text_bytes.decode('utf-8') # Затем декодируем как UTF-8
+        completion = client.chat.completions.create(
+            extra_headers={
+                "HTTP-Referer": "<YOUR_SITE_URL>",  # Optional. Site URL for rankings on openrouter.ai. Замените на URL вашего сайта
+                "X-Title": "<YOUR_SITE_NAME>",  # Optional. Site title for rankings on openrouter.ai. Замените на название вашего сайта
+            },
+            extra_body={},
+            model=OPENROUTER_MODEL_NAME, # Используем модель из переменной окружения или установленную по умолчанию
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
+        llm_response_text = completion.choices[0].message.content
 
         print(f"DEBUG: {datetime.datetime.now()} - Выход из функции send_prompt_to_llm_api: Ответ от API получен, content (начало): {llm_response_text[:50]}...")
         return llm_response_text
 
-    except Exception as e: # Ловим общие исключения для обработки ошибок Langchain
-        error_message = f"Ошибка при обращении к GigaChat API через Langchain: {e}"
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из send_prompt_to_llm_api с ошибкой Langchain: {error_message}")
+    except Exception as e:  # Ловим общие исключения для обработки ошибок OpenAI API
+        error_message = f"Ошибка при обращении к OpenRouter API через OpenAI клиент: {e}"
+        print(f"DEBUG: {datetime.datetime.now()} - Выход из send_prompt_to_llm_api с ошибкой OpenAI: {error_message}")
         raise Exception(error_message)
     print(f"DEBUG: {datetime.datetime.now()} - Выход из функции send_prompt_to_llm_api (finally)")
 
 
-# Функция get_gigachat_access_token больше не нужна, Langchain управляет токенами
 
 def save_message(conn, character_name, player_name, message_text, message_direction):
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию save_message, char_name: {character_name}, player_name: {player_name}, direction: {message_direction}")
