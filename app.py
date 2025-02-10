@@ -54,10 +54,13 @@ def handle_post_request():
             result_utf8_bytes = result.encode('utf-8')
             result_utf8_string = result_utf8_bytes.decode('utf-8')
 
-            # Отправляем JSON ответ, указав кодировку UTF-8 через mimetype
-            response = jsonify({'response': result_utf8_string})
-            response.headers['Content-Type'] = 'application/json; charset=utf-8'
-            return response, 200
+            response_json = json.dumps({'response': result}, ensure_ascii=False).encode('cp1251')
+            response = app.response_class(
+                response=response_json,
+                status=200,
+                mimetype='application/json; charset=windows-1251'
+            )
+return response
         except Exception as e:
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request с ошибкой: {e}")
             return jsonify({'error': str(e)}), 500
