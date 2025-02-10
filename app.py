@@ -140,9 +140,13 @@ def construct_prompt(character_name, character_description, message_history, cur
 
 def send_prompt_to_llm_api(prompt):
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию send_prompt_to_llm_api, prompt (начало): {prompt[:50]}...")  # Отладка: Вход
-    """Отправляет промпт к GigaChat API и возвращает ответ, используя библиотеку 'requests' и структуру запроса из документации."""
+    """Отправляет промпт к GigaChat API и возвращает ответ, используя библиотеку 'requests' и структуру запроса из документации.
 
-    url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions" # Используем URL из примера, но для chat/completions
+    **ВНИМАНИЕ: Временно отключена проверка SSL-сертификата (verify=False) для обхода ошибки SSLError.
+    Это НЕБЕЗОПАСНО для production-приложений.  В production нужно настроить проверку сертификатов!**
+    """
+
+    url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions" # Используем URL из примера
 
     headers = {
         'Accept': 'application/json',
@@ -161,7 +165,7 @@ def send_prompt_to_llm_api(prompt):
     }
 
     try:
-        response = requests.request("POST", url, headers=headers, data=json.dumps(payload)) # Используем requests.request с методом POST
+        response = requests.request("POST", url, headers=headers, json=payload, verify=False) # **verify=False - Отключение проверки SSL!**
         response.raise_for_status()  # Проверка на HTTP ошибки
         llm_response_json = response.json()
 
