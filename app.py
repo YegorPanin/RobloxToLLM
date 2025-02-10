@@ -55,11 +55,11 @@ def handle_post_request():
             result_utf8_bytes = result.encode('utf-8')
             result_utf8_string = result_utf8_bytes.decode('utf-8')
 
-            response_json = json.dumps({'response': result}, ensure_ascii=False).encode('cp1251')
+            response_json = json.dumps({'response': result}, ensure_ascii=False).encode('koi8-r')
             response = app.response_class(
                 response=response_json,
                 status=200,
-                mimetype='application/json; charset=windows-1251'
+                mimetype='application/json; charset=koi8-r'
             )
             return response
         except Exception as e:
