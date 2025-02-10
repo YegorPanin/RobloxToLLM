@@ -51,7 +51,7 @@ def handle_post_request():
             print(f"DEBUG: {datetime.datetime.now()} - Ответ от process_data (начало): {result[:50]}...")
 
             response = jsonify({'response': result})
-            response.mimetype = 'application/json; charset=utf-8'
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
             return response, 200
         except Exception as e:
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request с ошибкой: {e}")
@@ -60,7 +60,6 @@ def handle_post_request():
         print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request с ошибкой: Метод не поддерживается")
         return 'Метод не поддерживается', 405
     print(f"DEBUG: {datetime.datetime.now()} - Выход из функции handle_post_request (конец)")
-
 
 def process_data(char_name, player_name, question):
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию process_data, char_name: {char_name}, player_name: {player_name}, question: {question}")
