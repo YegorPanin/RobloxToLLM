@@ -54,12 +54,12 @@ def handle_post_request():
             # **Явно кодируем и декодируем в UTF-8 перед jsonify**
             result_utf8_bytes = result.encode('utf-8')
             result_utf8_string = result_utf8_bytes.decode('utf-8')
-
-            response_json = json.dumps({'response': result}, ensure_ascii=False).encode('koi8-r')
+            
+            response_json = json.dumps({'response': result_utf8_string}, ensure_ascii=False).encode('utf-8')
             response = app.response_class(
                 response=response_json,
                 status=200,
-                mimetype='application/json; charset=koi8-r'
+                mimetype='application/json; charset=utf-8'
             )
             return response
         except Exception as e:
