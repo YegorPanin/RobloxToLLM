@@ -31,6 +31,8 @@ def get_db_connection():
     return conn
 
 
+import json
+
 @app.route('/api', methods=['POST'])
 def handle_post_request():
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию handle_post_request")
@@ -50,9 +52,13 @@ def handle_post_request():
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request: Успешно, ответ получен")
             print(f"DEBUG: {datetime.datetime.now()} - Ответ от process_data (начало): {result[:50]}...")
 
-            response = jsonify({'response': result})
-            response.headers['Content-Type'] = 'application/json; charset=utf-8'
-            return response, 200
+            response = app.response_class(
+                response=json.dumps({'response': result}, ensure_ascii=False).encode('cp1251'),
+                status=200,
+                mimetype='application/json'
+            )
+            response.headers['Content-Type'] = 'application/json; charset=windows-1251'
+            return response
         except Exception as e:
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request с ошибкой: {e}")
             return jsonify({'error': str(e)}), 500
