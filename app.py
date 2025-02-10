@@ -46,16 +46,23 @@ def handle_post_request():
             return jsonify({'error': 'Недостаточно данных в запросе. Ожидаются charName, playerName, question'}), 400
 
         try:
-            result = process_data(char_name, player_name, question)
-            print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request: Успешно, ответ получен")
-            print(f"DEBUG: {datetime.datetime.now()} - Ответ от process_data (начало): {result[:50]}...")
+        result = process_data(char_name, player_name, question)
+        print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request: Успешно, ответ получен")
+        print(f"DEBUG: {datetime.datetime.now()} - Ответ от process_data (начало): {result[:50]}...")
 
-            # **Явно кодируем и декодируем в UTF-8 перед jsonify**
-            result_utf8_bytes = result.encode('utf-8')
-            result_utf8_string = result_utf8_bytes.decode('utf-8')
+        # **Явно кодируем и декодируем в UTF-8 перед jsonify**
+        result_utf8_bytes = result.encode('utf-8')
+        result_utf8_string = result_utf8_bytes.decode('utf-8')
 
-            # Отправляем JSON ответ, указав кодировку UTF-8 через mimetype
-            return jsonify({'response': result_utf8_string}, mimetype='application/json; charset=utf-8'), 200
+        # **---  Добавляем отладочный вывод ---**
+        print(f"DEBUG: {datetime.datetime.now()} - Отладочный вывод перед jsonify:")
+        print(f"DEBUG: Тип данных для jsonify: {type({'response': result_utf8_string})}") # Проверяем тип данных
+        print(f"DEBUG: Данные для jsonify: {{'response': result_utf8_string}}") # Выводим сами данные
+        print(f"DEBUG: Mimetype для jsonify: 'application/json; charset=utf-8'") # Проверяем mimetype
+
+        # Отправляем JSON ответ, указав кодировку UTF-8 через mimetype
+        return jsonify({'response': result_utf8_string}, mimetype='application/json; charset=utf-8'), 200
+    except Exception as e:
         except Exception as e:
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request с ошибкой: {e}")
             return jsonify({'error': str(e)}), 500
