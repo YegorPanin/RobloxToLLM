@@ -50,15 +50,7 @@ def handle_post_request():
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request: Успешно, ответ получен")
             print(f"DEBUG: {datetime.datetime.now()} - Ответ от process_data (начало): {result[:50]}...")
 
-            result_utf8_bytes = result.encode('utf-8')
-            result_utf8_string = result_utf8_bytes.decode('utf-8')
-
-            print(f"DEBUG: {datetime.datetime.now()} - Отладочный вывод перед jsonify:")
-            print(f"DEBUG: Тип данных для jsonify: {type({'response': result_utf8_string})}")
-            print(f"DEBUG: Данные для jsonify: {{'response': result_utf8_string}}")
-            print(f"DEBUG: Mimetype для jsonify: 'application/json; charset=utf-8'")
-
-            response = jsonify({'response': result_utf8_string})
+            response = jsonify({'response': result})
             response.mimetype = 'application/json; charset=utf-8'
             return response, 200
         except Exception as e:
