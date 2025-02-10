@@ -198,21 +198,6 @@ def get_gigachat_access_token():
         raise Exception(error_message)
     print(f"DEBUG: {datetime.datetime.now()} - Выход из функции get_gigachat_access_token (finally)")
 
-    except requests.exceptions.RequestException as e:
-        error_message = f"Ошибка при получении Access Token от GigaChat API (oauth): {e}"
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с ошибкой requests: {error_message}")
-        raise Exception(error_message)
-    except KeyError as e:
-        error_message = f"Ошибка при разборе JSON ответа Access Token API (oauth) (KeyError): {e}. Проверьте структуру JSON ответа."
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с ошибкой KeyError: {error_message}")
-        raise Exception(error_message)
-    except Exception as e:
-        error_message = f"Неизвестная ошибка при получении Access Token от GigaChat API (oauth): {e}"
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с неизвестной ошибкой: {error_message}")
-        raise Exception(error_message)
-    print(f"DEBUG: {datetime.datetime.now()} - Выход из функции get_gigachat_access_token (finally)")
-
-
 def send_prompt_to_llm_api(prompt):
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию send_prompt_to_llm_api, prompt (начало): {prompt[:50]}...")
 
