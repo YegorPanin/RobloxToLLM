@@ -60,7 +60,7 @@ def handle_post_request():
                 status=200,
                 mimetype='application/json; charset=windows-1251'
             )
-return response
+            return response
         except Exception as e:
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request с ошибкой: {e}")
             return jsonify({'error': str(e)}), 500
