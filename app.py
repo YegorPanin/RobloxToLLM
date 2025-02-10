@@ -140,13 +140,11 @@ def construct_prompt(character_name, character_description, message_history, cur
     return prompt
     print(f"DEBUG: {datetime.datetime.now()} - Выход из функции construct_prompt (finally)")
 
-
 def get_gigachat_access_token():
-    global access_token_cache, token_expiry_time  # Используем глобальные переменные
+    global access_token_cache, token_expiry_time
 
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию get_gigachat_access_token")
 
-    # Проверяем, есть ли кэшированный токен и не истекло ли его время жизни
     if access_token_cache and token_expiry_time and datetime.datetime.now() < token_expiry_time:
         print(f"DEBUG: {datetime.datetime.now()} - get_gigachat_access_token: Используем кэшированный Access Token (действителен до {token_expiry_time})")
         return access_token_cache
@@ -167,20 +165,38 @@ def get_gigachat_access_token():
     }
     payload_oauth = {'scope': 'GIGACHAT_API_PERS'}
 
+    print(f"DEBUG: {datetime.datetime.now()} - get_gigachat_access_token: OAuth URL: {oauth_url}") # **DEBUG: Print OAuth URL**
+    print(f"DEBUG: {datetime.datetime.now()} - get_gigachat_access_token: OAuth Headers: {headers_oauth}") # **DEBUG: Print OAuth Headers**
+    print(f"DEBUG: {datetime.datetime.now()} - get_gigachat_access_token: OAuth Payload: {payload_oauth}") # **DEBUG: Print OAuth Payload**
+
+
     try:
         response_oauth = requests.request("POST", oauth_url, headers=headers_oauth, data=payload_oauth, verify=False) # verify=False - for debugging
         response_oauth.raise_for_status()
 
         access_token_json = response_oauth.json()
         access_token = access_token_json['access_token']
-        expires_in = access_token_json['expires_in'] # Получаем время жизни токена из ответа
+        expires_in = access_token_json['expires_in']
 
-        # Кэшируем токен и время его истечения
         access_token_cache = access_token
-        token_expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=expires_in - 60) # Вычитаем 60 секунд для "запаса"
+        token_expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=expires_in - 60)
 
         print(f"DEBUG: {datetime.datetime.now()} - Выход из функции get_gigachat_access_token: Access Token успешно получен и кэширован (действителен до {token_expiry_time}), начало: {access_token[:20]}...")
         return access_token
+
+    except requests.exceptions.RequestException as e:
+        error_message = f"Ошибка при получении Access Token от GigaChat API (oauth): {e}.  Response text: {response_oauth.text if 'response_oauth' in locals() else 'No response text available'}" # **DEBUG: Print response text**
+        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с ошибкой requests: {error_message}")
+        raise Exception(error_message)
+    except KeyError as e:
+        error_message = f"Ошибка при разборе JSON ответа Access Token API (oauth) (KeyError): {e}. Проверьте структуру JSON ответа."
+        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с ошибкой KeyError: {error_message}")
+        raise Exception(error_message)
+    except Exception as e:
+        error_message = f"Неизвестная ошибка при получении Access Token от GigaChat API (oauth): {e}"
+        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с неизвестной ошибкой: {error_message}")
+        raise Exception(error_message)
+    print(f"DEBUG: {datetime.datetime.now()} - Выход из функции get_gigachat_access_token (finally)")
 
     except requests.exceptions.RequestException as e:
         error_message = f"Ошибка при получении Access Token от GigaChat API (oauth): {e}"
