@@ -31,8 +31,6 @@ def get_db_connection():
     return conn
 
 
-import json
-
 @app.route('/api', methods=['POST'])
 def handle_post_request():
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию handle_post_request")
@@ -52,13 +50,12 @@ def handle_post_request():
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request: Успешно, ответ получен")
             print(f"DEBUG: {datetime.datetime.now()} - Ответ от process_data (начало): {result[:50]}...")
 
-            response = app.response_class(
-                response=json.dumps({'response': result}, ensure_ascii=False).encode('cp1251'),
-                status=200,
-                mimetype='application/json'
-            )
-            response.headers['Content-Type'] = 'application/json; charset=windows-1251'
-            return response
+            # **Явно кодируем и декодируем в UTF-8 перед jsonify**
+            result_utf8_bytes = result.encode('utf-8')
+            result_utf8_string = result_utf8_bytes.decode('utf-8')
+
+            # Отправляем JSON ответ, указав кодировку UTF-8 через mimetype
+            return jsonify({'response': result_utf8_string},  mimetype='application/json; charset=utf-8'), 200
         except Exception as e:
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request с ошибкой: {e}")
             return jsonify({'error': str(e)}), 500
@@ -66,6 +63,7 @@ def handle_post_request():
         print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request с ошибкой: Метод не поддерживается")
         return 'Метод не поддерживается', 405
     print(f"DEBUG: {datetime.datetime.now()} - Выход из функции handle_post_request (конец)")
+
 
 def process_data(char_name, player_name, question):
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию process_data, char_name: {char_name}, player_name: {player_name}, question: {question}")
