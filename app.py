@@ -1,23 +1,22 @@
 from flask import Flask, request, jsonify
 import sqlite3
-import requests
 import os
 import datetime
-import json
-import base64
-import uuid
-import time  # Импортируем time для работы со временем
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_gigachat.chat_models import GigaChat
 
 app = Flask(__name__)
 
 DATABASE_NAME = 'Characters.db'
 GIGACHAT_AUTHORIZATION_KEY = os.environ.get("GIGACHAT_AUTHORIZATION_KEY")
 GIGACHAT_MODEL_NAME = "GigaChat:latest"
-GIGACHAT_API_URL = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
 
-# Глобальные переменные для кэширования Access Token и времени его истечения
-access_token_cache = None
-token_expiry_time = None
+# Инициализация модели GigaChat через Langchain
+llm = GigaChat(
+    credentials=GIGACHAT_AUTHORIZATION_KEY, # Используем Authorization Key из переменных окружения
+    verify_ssl_certs=False, # verify_ssl_certs=False - для отладки, в production лучше убрать или True
+    model=GIGACHAT_MODEL_NAME # Указываем модель
+)
 
 if not GIGACHAT_AUTHORIZATION_KEY:
     print("Внимание: Не найден GIGACHAT_AUTHORIZATION_KEY в переменных окружения.")
@@ -50,7 +49,13 @@ def handle_post_request():
             result = process_data(char_name, player_name, question)
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request: Успешно, ответ получен")
             print(f"DEBUG: {datetime.datetime.now()} - Ответ от process_data (начало): {result[:50]}...")
-            return jsonify({'response': result}), 200
+
+            # **Явно кодируем и декодируем в UTF-8 перед jsonify**
+            result_utf8_bytes = result.encode('utf-8')
+            result_utf8_string = result_utf8_bytes.decode('utf-8')
+
+            # Отправляем JSON ответ, указав кодировку UTF-8 через mimetype
+            return jsonify({'response': result_utf8_string},  mimetype='application/json, charset=utf-8'), 200
         except Exception as e:
             print(f"DEBUG: {datetime.datetime.now()} - Выход из handle_post_request с ошибкой: {e}")
             return jsonify({'error': str(e)}), 500
@@ -140,111 +145,30 @@ def construct_prompt(character_name, character_description, message_history, cur
     return prompt
     print(f"DEBUG: {datetime.datetime.now()} - Выход из функции construct_prompt (finally)")
 
-def get_gigachat_access_token():
-    global access_token_cache, token_expiry_time
-
-    print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию get_gigachat_access_token")
-
-    if access_token_cache and token_expiry_time and datetime.datetime.now() < token_expiry_time:
-        print(f"DEBUG: {datetime.datetime.now()} - get_gigachat_access_token: Используем кэшированный Access Token (действителен до {token_expiry_time})")
-        return access_token_cache
-
-    oauth_url = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
-    authorization_key = GIGACHAT_AUTHORIZATION_KEY
-
-    if not authorization_key:
-        error_message = "Не найден GIGACHAT_AUTHORIZATION_KEY в переменных окружения.  Нужен Authorization key для получения Access Token."
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с ошибкой: {error_message}")
-        raise Exception(error_message)
-
-    headers_oauth = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'RqUID': str(uuid.uuid4()), # Generate random UUID for RqUID
-        'Authorization': 'Basic ' + base64.b64encode(authorization_key.encode('utf-8')).decode('utf-8')
-    }
-    payload_oauth = {'scope': 'GIGACHAT_API_PERS'}
-
-    print(f"DEBUG: {datetime.datetime.now()} - get_gigachat_access_token: OAuth URL: {oauth_url}") # **DEBUG: Print OAuth URL**
-    print(f"DEBUG: {datetime.datetime.now()} - get_gigachat_access_token: OAuth Headers: {headers_oauth}") # **DEBUG: Print OAuth Headers**
-    print(f"DEBUG: {datetime.datetime.now()} - get_gigachat_access_token: OAuth Payload: {payload_oauth}") # **DEBUG: Print OAuth Payload**
-
-
-    try:
-        response_oauth = requests.request("POST", oauth_url, headers=headers_oauth, data=payload_oauth, verify=False) # verify=False - for debugging
-        response_oauth.raise_for_status()
-
-        access_token_json = response_oauth.json()
-        access_token = access_token_json['access_token']
-        expires_in = access_token_json['expires_in']
-
-        access_token_cache = access_token
-        token_expiry_time = datetime.datetime.now() + datetime.timedelta(seconds=expires_in - 60)
-
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из функции get_gigachat_access_token: Access Token успешно получен и кэширован (действителен до {token_expiry_time}), начало: {access_token[:20]}...")
-        return access_token
-
-    except requests.exceptions.RequestException as e:
-        error_message = f"Ошибка при получении Access Token от GigaChat API (oauth): {e}.  Response text: {response_oauth.text if 'response_oauth' in locals() else 'No response text available'}" # **DEBUG: Print response text**
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с ошибкой requests: {error_message}")
-        raise Exception(error_message)
-    except KeyError as e:
-        error_message = f"Ошибка при разборе JSON ответа Access Token API (oauth) (KeyError): {e}. Проверьте структуру JSON ответа."
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с ошибкой KeyError: {error_message}")
-        raise Exception(error_message)
-    except Exception as e:
-        error_message = f"Неизвестная ошибка при получении Access Token от GigaChat API (oauth): {e}"
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из get_gigachat_access_token с неизвестной ошибкой: {error_message}")
-        raise Exception(error_message)
-    print(f"DEBUG: {datetime.datetime.now()} - Выход из функции get_gigachat_access_token (finally)")
 
 def send_prompt_to_llm_api(prompt):
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию send_prompt_to_llm_api, prompt (начало): {prompt[:50]}...")
 
-    url = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
-
     try:
-        access_token = get_gigachat_access_token() # Get Access Token (теперь с кэшированием и обновлением)
-
-        headers = {
-            'Accept': 'application/json',
-            'Authorization': f'Bearer {access_token}',
-            'Content-Type': 'application/json'
-        }
-        payload = {
-            "model_id": GIGACHAT_MODEL_NAME,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        }
-
-        print(f"DEBUG: {datetime.datetime.now()} -  send_prompt_to_llm_api: Headers (using Access Token): {headers}")
-
-        response = requests.request("POST", url, headers=headers, json=payload, verify=False) # verify=False - for debugging
-        response.raise_for_status()
-        llm_response_json = response.json()
-        llm_response_text = llm_response_json['choices'][0]['message']['content']
+        messages = [ # Формируем список сообщений Langchain
+            SystemMessage(content="Ты - игровой персонаж."), # Системное сообщение (можно убрать, если не нужно)
+            HumanMessage(content=prompt) # Сообщение пользователя с промптом
+        ]
+        response = llm.invoke(messages) # Вызов Langchain LLM
+        llm_response_text_bytes = response.content.encode('utf-8') # Сначала кодируем в байты (на всякий случай)
+        llm_response_text = llm_response_text_bytes.decode('utf-8') # Затем декодируем как UTF-8
 
         print(f"DEBUG: {datetime.datetime.now()} - Выход из функции send_prompt_to_llm_api: Ответ от API получен, content (начало): {llm_response_text[:50]}...")
         return llm_response_text
 
-
-    except requests.exceptions.RequestException as e:
-        error_message = f"Ошибка при обращении к GigaChat API через библиотеку 'requests': {e}"
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из send_prompt_to_llm_api с ошибкой requests: {error_message}")
+    except Exception as e: # Ловим общие исключения для обработки ошибок Langchain
+        error_message = f"Ошибка при обращении к GigaChat API через Langchain: {e}"
+        print(f"DEBUG: {datetime.datetime.now()} - Выход из send_prompt_to_llm_api с ошибкой Langchain: {error_message}")
         raise Exception(error_message)
-    except KeyError as e:
-        error_message = f"Ошибка при разборе ответа GigaChat API JSON (KeyError): {e}. Проверьте структуру JSON ответа."
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из send_prompt_to_llm_api с ошибкой KeyError: {error_message}")
-        raise Exception(error_message)
-    except Exception as e:
-        error_message = f"Неизвестная ошибка при обращении к GigaChat API: {e}"
-        print(f"DEBUG: {datetime.datetime.now()} - Выход из send_prompt_to_llm_api с неизвестной ошибкой: {error_message}")
     print(f"DEBUG: {datetime.datetime.now()} - Выход из функции send_prompt_to_llm_api (finally)")
 
+
+# Функция get_gigachat_access_token больше не нужна, Langchain управляет токенами
 
 def save_message(conn, character_name, player_name, message_text, message_direction):
     print(f"DEBUG: {datetime.datetime.now()} - Вход в функцию save_message, char_name: {character_name}, player_name: {player_name}, direction: {message_direction}")
